@@ -1,16 +1,29 @@
-## Hi there 👋
+# KR Liu Research Website
 
-<!--
-**krliu67/krliu67** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+This is a static academic-style personal website that can be deployed directly to GitHub Pages, Vercel, or Netlify.
 
-Here are some ideas to get you started:
+## Structure
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+- `index.html`: homepage with research overview, publications, collaborators, and CV access
+- `styles.css`: dark theme styling
+- `script.js`: mobile navigation behavior
+- `cv.pdf`: optional CV file linked from the homepage
+
+## Local Preview
+
+You can open `index.html` directly in a browser.
+
+If you prefer serving it locally, run this in the project directory:
+
+```powershell
+python -m http.server 8000
+```
+
+Then visit `http://localhost:8000`.
+
+## Suggested Next Edits
+
+1. Replace the placeholder research description with your actual interests.
+2. Update the publications list with your real papers and links.
+3. Add collaborator names and affiliations.
+4. Put your actual CV in the project root as `cv.pdf`.
