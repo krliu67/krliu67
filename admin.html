@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Content Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,700&family=Manrope:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <main class="admin-page">
+      <section class="hero">
+        <div class="intro-card admin-card">
+          <h1>Site Content Editor</h1>
+          <p>
+            Edit your website content here. `Save Local Preview` updates this browser immediately.
+            To publish changes to GitHub Pages, copy the saved JSON into [content.js].
+          </p>
+          <div class="admin-actions">
+            <button class="cv-link" id="load-defaults" type="button">Load Current Content</button>
+            <button class="cv-link" id="save-local" type="button">Save Local Preview</button>
+            <button class="cv-link" id="reset-local" type="button">Reset Local Preview</button>
+          </div>
+          <p class="section-note" id="admin-status">Editing `defaultSiteContent`.</p>
+          <p class="section-note"><a href="index.html">Back to website</a></p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2>JSON Content</h2>
+        </div>
+        <div class="hero-panel admin-card">
+          <textarea id="content-editor" class="content-editor" spellcheck="false"></textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="content.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
