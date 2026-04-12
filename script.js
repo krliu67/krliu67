@@ -3,6 +3,8 @@ const draggableTimeline = document.querySelector(".draggable-timeline");
 const chatboxMessages = document.querySelector("#chatbox-messages");
 const chatboxForm = document.querySelector("#chatbox-form");
 const chatboxInput = document.querySelector("#chatbox-input");
+let lastChatContext = null;
+let placeholderRotationId = null;
 
 const getSiteContent = () => {
   const defaults = window.defaultSiteContent || {};
@@ -136,8 +138,42 @@ const renderSiteContent = () => {
   const buildChatResponse = (question) => {
     const normalized = question.trim().toLowerCase();
     const knowledgeBase = Array.isArray(content.knowledgeBase) ? content.knowledgeBase : [];
-    const normalizedTokens = normalized.split(/[^a-z0-9.+#-]+/).filter(Boolean);
+    const stopwords = new Set([
+      "the", "a", "an", "is", "are", "was", "were", "do", "does", "did", "have", "has",
+      "can", "could", "would", "you", "your", "what", "which", "who", "where", "when",
+      "how", "about", "with", "in", "on", "for", "to", "of", "and", "or", "me", "tell",
+      "say", "use", "using", "work", "worked", "working", "experience", "any", "main"
+    ]);
+    const phraseRewrites = [
+      ["machine learning", "ml"],
+      ["deep transfer learning", "transfer learning"],
+      ["artificial intelligence", "ai"],
+      ["non probability", "nonprobability"],
+      ["joint program in survey methodology", "jpsm"],
+      ["alzheimer disease", "alzheimers"]
+    ];
+    const normalizeText = (text) => {
+      let value = text.toLowerCase();
+      phraseRewrites.forEach(([from, to]) => {
+        value = value.replaceAll(from, to);
+      });
+      return value;
+    };
+    const normalizedQuestion = normalizeText(normalized);
+    const normalizedTokens = normalizedQuestion
+      .split(/[^a-z0-9.+#-]+/)
+      .filter(Boolean)
+      .filter((token) => !stopwords.has(token));
     const yesNoQuestion = /^(do|does|did|have|has|are|is|can|could|would)\b/.test(normalized);
+    const currentYear = new Date().getFullYear();
+    const birthYear = Number(content.profile?.birthYear);
+    const followUpQuestion = /^(what about|and|also|how about|what else|anything else)\b/.test(normalizedQuestion);
+    const referenceFollowUp = /\b(it|that|this|them|those|these|same topic|same area)\b/.test(normalizedQuestion);
+
+    if ((normalizedQuestion.includes("how old") || normalizedTokens.includes("age")) && Number.isFinite(birthYear)) {
+      const age = currentYear - birthYear;
+      return `Kangrui is ${age} years old, based on a birth year of ${birthYear}.`;
+    }
 
     const categoryHints = [
       { category: "research", phrases: ["research interest", "research interests", "main research", "research focus", "what do you work on"] },
@@ -154,8 +190,11 @@ const renderSiteContent = () => {
     const scoreKnowledgeBase = (query) =>
       knowledgeBase
         .map((item) => {
-          const haystack = `${item.category || ""} ${item.title} ${item.answer} ${(item.keywords || []).join(" ")}`.toLowerCase();
-          const queryTokens = query.split(/[^a-z0-9.+#-]+/).filter(Boolean);
+          const haystack = normalizeText(`${item.category || ""} ${item.title} ${item.answer} ${(item.keywords || []).join(" ")}`);
+          const queryTokens = normalizeText(query)
+            .split(/[^a-z0-9.+#-]+/)
+            .filter(Boolean)
+            .filter((token) => !stopwords.has(token));
           let score = 0;
 
           if (haystack.includes(query)) {
@@ -168,15 +207,27 @@ const renderSiteContent = () => {
             }
 
             if (haystack.includes(token)) {
-              score += token.length > 4 ? 3 : 1;
+              score += token.length > 4 ? 4 : 2;
             }
           });
 
           categoryHints.forEach((hint) => {
-            if ((item.category || "") === hint.category && hint.phrases.some((phrase) => normalized.includes(phrase))) {
+            if ((item.category || "") === hint.category && hint.phrases.some((phrase) => normalizedQuestion.includes(phrase))) {
               score += 8;
             }
           });
+
+          if (followUpQuestion && lastChatContext?.category && lastChatContext.category === item.category) {
+            score += 6;
+          }
+
+          if (followUpQuestion && Array.isArray(lastChatContext?.tokens)) {
+            lastChatContext.tokens.forEach((token) => {
+              if (haystack.includes(token)) {
+                score += 2;
+              }
+            });
+          }
 
           return { ...item, score };
         })
@@ -190,11 +241,12 @@ const renderSiteContent = () => {
         /(?:work on|worked on|working on)\s+(.+?)(?:\?|$)/,
         /(?:familiar with|know about)\s+(.+?)(?:\?|$)/,
         /(?:do you know)\s+(.+?)(?:\?|$)/,
-        /(?:what are your main)\s+(.+?)(?:\?|$)/
+        /(?:what are your main)\s+(.+?)(?:\?|$)/,
+        /(?:tell me about)\s+(.+?)(?:\?|$)/
       ];
 
       for (const pattern of patterns) {
-        const match = normalized.match(pattern);
+        const match = normalizedQuestion.match(pattern);
         if (match?.[1]) {
           return match[1].trim();
         }
@@ -205,26 +257,89 @@ const renderSiteContent = () => {
 
     const extractedTopic = extractTopicFromQuestion();
     const topicMatches = extractedTopic ? scoreKnowledgeBase(extractedTopic) : [];
-    const scored = scoreKnowledgeBase(normalized);
+    const scored = scoreKnowledgeBase(normalizedQuestion);
+    const contextMatches =
+      lastChatContext?.category
+        ? knowledgeBase
+            .filter((item) => item.category === lastChatContext.category)
+            .map((item) => ({ ...item, score: 1 }))
+        : [];
+
+    const setContext = (item) => {
+      if (!item) {
+        return;
+      }
+
+      lastChatContext = {
+        category: item.category || "",
+        tokens: normalizedTokens
+      };
+    };
+
+    const formatAnswer = (items, options = {}) => {
+      const topItems = items.filter(Boolean);
+      if (!topItems.length) {
+        return content.chatbox?.fallback || "I could not find a strong match in the current website data.";
+      }
+
+      if (options.yesNo === "yes") {
+        return `Yes. ${topItems.map((item) => item.answer).join(" ")}`;
+      }
+
+      if (options.yesNo === "no") {
+        return options.fallback || "No. I do not currently list that experience in the public website knowledge base.";
+      }
+
+      if (/^(who)\b/.test(normalizedQuestion)) {
+        return topItems[0].answer;
+      }
+
+      if (/^(what|tell me|describe|summarize)\b/.test(normalizedQuestion)) {
+        return topItems.map((item) => item.answer).join(" ");
+      }
+
+      if (topItems.length === 1) {
+        return topItems[0].answer;
+      }
+
+      return `${topItems[0].answer} ${topItems[1].answer}`;
+    };
+
+    if ((followUpQuestion || referenceFollowUp) && !extractedTopic && contextMatches.length) {
+      const contextualAnswer = contextMatches.map((item) => item.answer).join(" ");
+      return contextualAnswer;
+    }
 
     if (yesNoQuestion && extractedTopic) {
       if (topicMatches.length && topicMatches[0].score >= 3) {
-        return `Yes. ${topicMatches[0].answer}`;
+        setContext(topicMatches[0]);
+        return formatAnswer([topicMatches[0]], { yesNo: "yes" });
       }
 
-      return `No. I do not currently list direct experience with ${extractedTopic} in the public website knowledge base.`;
+      return formatAnswer([], {
+        yesNo: "no",
+        fallback: `No. I do not currently list direct experience with ${extractedTopic} in the public website knowledge base.`
+      });
     }
 
     if (scored.length && scored[0].score >= 6) {
       const topMatches = scored.slice(0, 2);
-      return topMatches.map((item) => item.answer).join(" ");
+      setContext(topMatches[0]);
+      return formatAnswer(topMatches);
+    }
+
+    if ((followUpQuestion || referenceFollowUp) && contextMatches.length) {
+      setContext(contextMatches[0]);
+      return formatAnswer(contextMatches.slice(0, 2));
     }
 
     if (!scored.length) {
+      lastChatContext = null;
       return content.chatbox?.fallback || "I could not find a strong match in the current website data.";
     }
 
-    return scored[0].answer;
+    setContext(scored[0]);
+    return formatAnswer([scored[0]]);
   };
 
   if (chatboxMessages && chatboxMessages.childElementCount === 0) {
@@ -241,14 +356,41 @@ const renderSiteContent = () => {
     chatboxIntro.textContent = content.chatbox.intro;
   }
 
-  if (chatboxInput && content.chatbox?.placeholder) {
-    chatboxInput.placeholder = content.chatbox.placeholder;
+  if (chatboxInput) {
+    const suggestedQuestions = Array.isArray(content.chatbox?.suggestedQuestions)
+      ? content.chatbox.suggestedQuestions
+      : [];
+    const placeholderQuestions = suggestedQuestions.length
+      ? suggestedQuestions
+      : [content.chatbox?.placeholder || "Ask me about my experience."];
+    let placeholderIndex = 0;
+
+    const setPlaceholder = () => {
+      const question = placeholderQuestions[placeholderIndex] || content.chatbox?.placeholder || "Ask me about my experience.";
+      chatboxInput.placeholder = question;
+      chatboxInput.dataset.currentPlaceholderQuestion = question;
+      placeholderIndex = (placeholderIndex + 1) % placeholderQuestions.length;
+    };
+
+    setPlaceholder();
+
+    if (placeholderRotationId) {
+      clearInterval(placeholderRotationId);
+    }
+
+    if (placeholderQuestions.length > 1) {
+      placeholderRotationId = window.setInterval(() => {
+        if (document.activeElement !== chatboxInput && !chatboxInput.value.trim()) {
+          setPlaceholder();
+        }
+      }, 3500);
+    }
   }
 
   if (chatboxForm && !chatboxForm.dataset.bound) {
     chatboxForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const question = chatboxInput?.value.trim();
+      const question = chatboxInput?.value.trim() || chatboxInput?.dataset.currentPlaceholderQuestion || "";
 
       if (!question) {
         return;

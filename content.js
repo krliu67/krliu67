@@ -27,6 +27,7 @@ window.defaultSiteContent = {
     role: "Research Assistant@EPIB, M.S.@JPSM",
     affiliation: "University of Maryland, College Park",
     emailNote: "Email: A [at] B, where A = krliu67 and B = umd.edu",
+    birthYear: 2001,
     links: {
       github: "https://github.com/krliu67",
       linkedin: "https://www.linkedin.com/in/kangrui-liu/"
@@ -112,6 +113,13 @@ window.defaultSiteContent = {
         "tianzhou ma",
         "yan li"
       ]
+    },
+    {
+      category: "personal",
+      title: "Age",
+      answer:
+        "Kangrui was born in 2001.",
+      keywords: ["age", "old", "how old", "birth year", "born", "birthday"]
     },
     {
       category: "collaboration",
