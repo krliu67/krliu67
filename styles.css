@@ -471,6 +471,10 @@ h3 {
   font-size: 0.82rem;
 }
 
+.footer-analytics {
+  margin-bottom: 6px;
+}
+
 .site-footer a {
   color: #56b6ff;
 }

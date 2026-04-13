@@ -318,5 +318,12 @@ window.defaultSiteContent = {
     text: "Powered by",
     linkLabel: "Codex",
     linkUrl: "https://chatgpt.com/codex"
+  },
+  analytics: {
+    provider: "goatcounter",
+    site: "",
+    label: "Visitors",
+    dashboardUrl: "",
+    enabled: false
   }
 };

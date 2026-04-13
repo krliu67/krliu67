@@ -4,6 +4,7 @@ const chatboxMessages = document.querySelector("#chatbox-messages");
 const chatboxForm = document.querySelector("#chatbox-form");
 const chatboxInput = document.querySelector("#chatbox-input");
 let lastChatContext = null;
+let analyticsInjected = false;
 let placeholderRotationId = null;
 
 const getSiteContent = () => {
@@ -11,7 +12,35 @@ const getSiteContent = () => {
 
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+    if (!saved) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(saved);
+    return {
+      ...defaults,
+      ...parsed,
+      profile: {
+        ...(defaults.profile || {}),
+        ...(parsed.profile || {})
+      },
+      chatbox: {
+        ...(defaults.chatbox || {}),
+        ...(parsed.chatbox || {})
+      },
+      cv: {
+        ...(defaults.cv || {}),
+        ...(parsed.cv || {})
+      },
+      footer: {
+        ...(defaults.footer || {}),
+        ...(parsed.footer || {})
+      },
+      analytics: {
+        ...(defaults.analytics || {}),
+        ...(parsed.analytics || {})
+      }
+    };
   } catch {
     return defaults;
   }
@@ -112,6 +141,29 @@ const renderSiteContent = () => {
   }
   if (footerLink && content.footer?.linkUrl) {
     footerLink.href = content.footer.linkUrl;
+  }
+
+  const analyticsFooter = document.querySelector("#footer-analytics");
+  const analyticsLink = document.querySelector("#analytics-link");
+  const analytics = content.analytics || {};
+
+  if (analyticsFooter && analyticsLink) {
+    if (analytics.enabled && analytics.provider === "goatcounter" && analytics.site) {
+      analyticsFooter.hidden = false;
+      analyticsLink.textContent = analytics.label || "Visitors";
+      analyticsLink.href = analytics.dashboardUrl || `https://${analytics.site}.goatcounter.com`;
+
+      if (!analyticsInjected) {
+        const script = document.createElement("script");
+        script.async = true;
+        script.src = "//gc.zgo.at/count.js";
+        script.dataset.goatcounter = `https://${analytics.site}.goatcounter.com/count`;
+        document.body.appendChild(script);
+        analyticsInjected = true;
+      }
+    } else {
+      analyticsFooter.hidden = true;
+    }
   }
 
   const appendChatMessage = (role, message) => {
