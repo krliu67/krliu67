@@ -7,6 +7,7 @@ let analyticsInjected = false;
 let placeholderRotationId = null;
 let pageViewPollId = null;
 let geoChartLoaderPromise = null;
+let geoChartReadyPromise = null;
 
 const getSiteContent = () => {
   const defaults = window.defaultSiteContent || {};
@@ -76,6 +77,28 @@ const loadGoogleGeoChart = () => {
   return geoChartLoaderPromise;
 };
 
+const ensureGoogleGeoChartReady = () => {
+  if (geoChartReadyPromise) {
+    return geoChartReadyPromise;
+  }
+
+  geoChartReadyPromise = loadGoogleGeoChart().then((google) => new Promise((resolve, reject) => {
+    if (!google?.charts?.load) {
+      reject(new Error("Google Charts loader is unavailable"));
+      return;
+    }
+
+    google.charts.load("current", {
+      packages: ["geochart"]
+    });
+
+    google.charts.setOnLoadCallback(() => resolve(google));
+    window.setTimeout(() => reject(new Error("GeoChart load timed out")), 8000);
+  }));
+
+  return geoChartReadyPromise;
+};
+
 const renderVisitorMap = (content) => {
   const section = document.querySelector("#visitor-map-section");
   const title = document.querySelector("#visitor-map-title");
@@ -97,6 +120,7 @@ const renderVisitorMap = (content) => {
   title.textContent = visitorMap.title || "Visitor Map";
   note.textContent = visitorMap.note || "A world map of where visitors come from.";
   status.textContent = "Loading map...";
+  canvas.innerHTML = "";
 
   fetch(visitorMap.dataUrl || "visitor-map.json", { cache: "no-store" })
     .then((response) => {
@@ -114,7 +138,7 @@ const renderVisitorMap = (content) => {
         return null;
       }
 
-      return loadGoogleGeoChart().then((google) => ({ google, rows, payload }));
+      return ensureGoogleGeoChartReady().then((google) => ({ google, rows, payload }));
     })
     .then((result) => {
       if (!result) {
@@ -122,21 +146,25 @@ const renderVisitorMap = (content) => {
       }
 
       const { google, rows, payload } = result;
-      google.charts.load("current", {
-        packages: ["geochart"]
-      });
-
-      google.charts.setOnLoadCallback(() => {
+      try {
         const data = google.visualization.arrayToDataTable([
           ["Country", "Visitors"],
           ...rows.map((row) => [row.country, Number(row.count) || 0])
         ]);
 
         const chart = new google.visualization.GeoChart(canvas);
+        if (google.visualization?.events) {
+          google.visualization.events.addListener(chart, "error", (event) => {
+            canvas.innerHTML = "";
+            status.textContent = event?.message || "Map failed to render.";
+          });
+        }
+
         chart.draw(data, {
           backgroundColor: "transparent",
           datalessRegionColor: "#18213f",
           defaultColor: "#35508f",
+          resolution: "countries",
           colorAxis: {
             colors: ["#7fa6ff", "#56b6ff", "#1f6bff"]
           },
@@ -150,11 +178,14 @@ const renderVisitorMap = (content) => {
         status.textContent = payload?.updatedAt
           ? `Updated ${payload.updatedAt}`
           : "Map updated.";
-      });
+      } catch (error) {
+        canvas.innerHTML = "";
+        status.textContent = error?.message || "Map failed to render.";
+      }
     })
-    .catch(() => {
+    .catch((error) => {
       canvas.innerHTML = "";
-      status.textContent = "Map data is not ready yet.";
+      status.textContent = error?.message || "Map data is not ready yet.";
     });
 };
 
