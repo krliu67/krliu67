@@ -1,11 +1,12 @@
 const STORAGE_KEY = "personal-website-content";
-const draggableTimeline = document.querySelector(".draggable-timeline");
 const chatboxMessages = document.querySelector("#chatbox-messages");
 const chatboxForm = document.querySelector("#chatbox-form");
 const chatboxInput = document.querySelector("#chatbox-input");
 let lastChatContext = null;
 let analyticsInjected = false;
 let placeholderRotationId = null;
+let pageViewPollId = null;
+let geoChartLoaderPromise = null;
 
 const getSiteContent = () => {
   const defaults = window.defaultSiteContent || {};
@@ -44,6 +45,117 @@ const getSiteContent = () => {
   } catch {
     return defaults;
   }
+};
+
+const loadGoogleGeoChart = () => {
+  if (window.google?.charts?.load) {
+    return Promise.resolve(window.google);
+  }
+
+  if (geoChartLoaderPromise) {
+    return geoChartLoaderPromise;
+  }
+
+  geoChartLoaderPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-geochart-loader="true"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.google), { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://www.gstatic.com/charts/loader.js";
+    script.async = true;
+    script.dataset.geochartLoader = "true";
+    script.addEventListener("load", () => resolve(window.google), { once: true });
+    script.addEventListener("error", () => reject(new Error("Failed to load Google Charts")), { once: true });
+    document.head.appendChild(script);
+  });
+
+  return geoChartLoaderPromise;
+};
+
+const renderVisitorMap = (content) => {
+  const section = document.querySelector("#visitor-map-section");
+  const title = document.querySelector("#visitor-map-title");
+  const note = document.querySelector("#visitor-map-note");
+  const canvas = document.querySelector("#visitor-map-canvas");
+  const status = document.querySelector("#visitor-map-status");
+  const visitorMap = content.visitorMap || {};
+
+  if (!section || !title || !note || !canvas || !status) {
+    return;
+  }
+
+  if (!visitorMap.enabled) {
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+  title.textContent = visitorMap.title || "Visitor Map";
+  note.textContent = visitorMap.note || "A world map of where visitors come from.";
+  status.textContent = "Loading map...";
+
+  fetch(visitorMap.dataUrl || "visitor-map.json", { cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to load visitor map data");
+      }
+
+      return response.json();
+    })
+    .then((payload) => {
+      const rows = Array.isArray(payload?.locations) ? payload.locations : [];
+      if (!rows.length) {
+        status.textContent = payload?.message || "No visitor location data yet.";
+        canvas.innerHTML = "";
+        return null;
+      }
+
+      return loadGoogleGeoChart().then((google) => ({ google, rows, payload }));
+    })
+    .then((result) => {
+      if (!result) {
+        return;
+      }
+
+      const { google, rows, payload } = result;
+      google.charts.load("current", {
+        packages: ["geochart"]
+      });
+
+      google.charts.setOnLoadCallback(() => {
+        const data = google.visualization.arrayToDataTable([
+          ["Country", "Visitors"],
+          ...rows.map((row) => [row.country, Number(row.count) || 0])
+        ]);
+
+        const chart = new google.visualization.GeoChart(canvas);
+        chart.draw(data, {
+          backgroundColor: "transparent",
+          datalessRegionColor: "#18213f",
+          defaultColor: "#35508f",
+          colorAxis: {
+            colors: ["#7fa6ff", "#56b6ff", "#1f6bff"]
+          },
+          legend: {
+            textStyle: {
+              color: "#a8b3cf"
+            }
+          }
+        });
+
+        status.textContent = payload?.updatedAt
+          ? `Updated ${payload.updatedAt}`
+          : "Map updated.";
+      });
+    })
+    .catch(() => {
+      canvas.innerHTML = "";
+      status.textContent = "Map data is not ready yet.";
+    });
 };
 
 const renderSiteContent = () => {
@@ -100,25 +212,12 @@ const renderSiteContent = () => {
     collaborationsNote.innerHTML = `<strong>${content.collaborationsNote}</strong>`;
   }
 
-  const collaborationsTimeline = document.querySelector("#collaborations-timeline-items");
-  if (collaborationsTimeline && Array.isArray(content.collaborations)) {
-    collaborationsTimeline.innerHTML = content.collaborations
-      .map(
-        (item) => `
-          <article class="timeline-item">
-            <div class="timeline-marker">
-              <p class="timeline-date">${item.date}</p>
-            </div>
-            <div class="timeline-body">
-              <p>${item.html}</p>
-            </div>
-          </article>
-        `
-      )
-      .join("");
+  const collaborationsList = document.querySelector("#collaborations-list");
+  if (collaborationsList && Array.isArray(content.collaborations)) {
+    collaborationsList.innerHTML = content.collaborations
+      .map((item) => item.html.replace(/^Collaborating with\s*/i, ""))
+      .join(" ");
   }
-
-  setText("#timeline-end-label", content.timelineEnd);
 
   const cvLink = document.querySelector("#cv-link");
   if (cvLink && content.cv) {
@@ -145,13 +244,40 @@ const renderSiteContent = () => {
 
   const analyticsFooter = document.querySelector("#footer-analytics");
   const analyticsLink = document.querySelector("#analytics-link");
+  const analyticsCounter = document.querySelector("#footer-counter");
+  const analyticsCounterLabel = document.querySelector("#counter-label");
+  const analyticsCounterValue = document.querySelector("#pageview-counter");
   const analytics = content.analytics || {};
 
-  if (analyticsFooter && analyticsLink) {
+  const renderGoatCounterValue = (site) => {
+    if (!analyticsCounterValue) {
+      return;
+    }
+
+    const path = encodeURIComponent("TOTAL");
+    fetch(`https://${site}.goatcounter.com/counter/${path}.json`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch page views");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        analyticsCounterValue.textContent = data.count || "--";
+      })
+      .catch(() => {
+        analyticsCounterValue.textContent = "--";
+      });
+  };
+
+  if (analyticsFooter && analyticsLink && analyticsCounter && analyticsCounterLabel) {
     if (analytics.enabled && analytics.provider === "goatcounter" && analytics.site) {
       analyticsFooter.hidden = false;
+      analyticsCounter.hidden = false;
       analyticsLink.textContent = analytics.label || "Visitors";
       analyticsLink.href = analytics.dashboardUrl || `https://${analytics.site}.goatcounter.com`;
+      analyticsCounterLabel.textContent = analytics.counterLabel || "Page Views";
 
       if (!analyticsInjected) {
         const script = document.createElement("script");
@@ -161,8 +287,25 @@ const renderSiteContent = () => {
         document.body.appendChild(script);
         analyticsInjected = true;
       }
+
+      renderGoatCounterValue(analytics.site);
+      if (pageViewPollId) {
+        clearInterval(pageViewPollId);
+      }
+      pageViewPollId = window.setInterval(() => {
+        renderGoatCounterValue(analytics.site);
+      }, 30000);
     } else {
       analyticsFooter.hidden = true;
+      analyticsCounter.hidden = false;
+      analyticsCounterLabel.textContent = analytics.counterLabel || "Page Views";
+      if (analyticsCounterValue) {
+        analyticsCounterValue.textContent = "Not enabled yet";
+      }
+      if (pageViewPollId) {
+        clearInterval(pageViewPollId);
+        pageViewPollId = null;
+      }
     }
   }
 
@@ -457,54 +600,7 @@ const renderSiteContent = () => {
     chatboxForm.dataset.bound = "true";
   }
 
+  renderVisitorMap(content);
 };
 
 renderSiteContent();
-
-if (draggableTimeline) {
-  let isDragging = false;
-  let startX = 0;
-  let startScrollLeft = 0;
-
-  const startDrag = (clientX) => {
-    isDragging = true;
-    startX = clientX;
-    startScrollLeft = draggableTimeline.scrollLeft;
-    draggableTimeline.classList.add("is-dragging");
-  };
-
-  const moveDrag = (clientX) => {
-    if (!isDragging) {
-      return;
-    }
-
-    const delta = clientX - startX;
-    draggableTimeline.scrollLeft = startScrollLeft - delta;
-  };
-
-  const endDrag = () => {
-    isDragging = false;
-    draggableTimeline.classList.remove("is-dragging");
-  };
-
-  draggableTimeline.addEventListener("mousedown", (event) => {
-    startDrag(event.clientX);
-  });
-
-  window.addEventListener("mousemove", (event) => {
-    moveDrag(event.clientX);
-  });
-
-  window.addEventListener("mouseup", endDrag);
-  draggableTimeline.addEventListener("mouseleave", endDrag);
-
-  draggableTimeline.addEventListener("touchstart", (event) => {
-    startDrag(event.touches[0].clientX);
-  }, { passive: true });
-
-  draggableTimeline.addEventListener("touchmove", (event) => {
-    moveDrag(event.touches[0].clientX);
-  }, { passive: true });
-
-  draggableTimeline.addEventListener("touchend", endDrag);
-}

@@ -70,34 +70,27 @@
         </div>
       </section>
 
-      <section class="section" id="collaborators">
-        <div class="section-heading">
-          <h2 id="collaborations-heading">Collaborations</h2>
-          <p class="section-note section-note-emphasis" id="collaborations-note"><strong>It is my good fortune to work with these excellent scholars from different areas.</strong></p>
-        </div>
-        <div class="timeline-shell">
-          <div class="timeline-card draggable-timeline" aria-label="Collaborators timeline">
-            <div id="collaborations-timeline-items"></div>
-            <div class="timeline-end">
-              <p class="timeline-date" id="timeline-end-label">Now</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div class="section collaborations-plain" id="collaborators">
+        <p class="collaborations-note-plain" id="collaborations-note"><strong>It is my good fortune to work with these excellent scholars from different areas.</strong></p>
+        <div class="collaborations-text" id="collaborations-list"></div>
+      </div>
 
-      <section class="section" id="cv">
+      <section class="section" id="visitor-map-section">
         <div class="section-heading">
-          <h2>CV</h2> 
+          <h2 id="visitor-map-title">Visitor Map</h2>
+          <p class="section-note" id="visitor-map-note">A world map of where visitors come from.</p>
         </div>
-        <div class="hero-panel">
-          <a class="cv-link" href="#" target="_blank" rel="noreferrer" id="cv-link">View CV</a>
-          <span class="cv-status" id="cv-status">Not uploaded yet...</span>
+        <div class="hero-panel visitor-map-panel">
+          <div class="visitor-map-canvas" id="visitor-map-canvas" aria-label="Visitor map"></div>
+          <p class="visitor-map-status" id="visitor-map-status">Loading map...</p>
         </div>
-        
       </section>
     </main>
 
     <footer class="site-footer">
+      <p class="footer-counter" id="footer-counter" hidden>
+        <span id="counter-label">Page Views</span>: <span id="pageview-counter">--</span>
+      </p>
       <p class="footer-analytics" id="footer-analytics" hidden>
         <a href="#" target="_blank" rel="noreferrer" id="analytics-link">Visitors</a>
       </p>

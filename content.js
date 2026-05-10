@@ -35,7 +35,7 @@ window.defaultSiteContent = {
   },
   about: [
     "I am currently a Research Assistant working with Dr. Tianzhou Ma and Dr. Yan Li in the Department of Epidemiology and Biostatistics at the University of Maryland. I received my M.S. from the Joint Program in Survey Methodology at the University of Maryland.",
-    "I am particularly interested in developing statistical methods that can draw credible conclusions from complex health data and apply them in real-world scenarios.",
+    "I am interested in developing statistical methods that can draw credible conclusions from complex health data and apply them in real-world scenarios.",
     "I’m always happy to collaborate. If you’re interested in working together, feel free to reach out to me via email."
   ],
   chatbox: {
@@ -301,11 +301,7 @@ window.defaultSiteContent = {
   collaborations: [
     {
       date: "2023-12",
-      html: "Started collaborating with <a href=\"https://jpsm.umd.edu/facultyprofile/li/yan\" target=\"_blank\" rel=\"noreferrer\">Dr. Yan Li</a> and <a href=\"https://as.virginia.edu/faculty-profile/lingxiao-wang\" target=\"_blank\" rel=\"noreferrer\">Dr. Lingxiao Wang</a> on survey sampling and population inference."
-    },
-    {
-      date: "2025-05",
-      html: "Started collaborating with <a href=\"https://sph.umd.edu/people/tianzhou-ma\" target=\"_blank\" rel=\"noreferrer\">Dr. Tianzhou Ma</a>, <a href=\"https://sph.umd.edu/people/edmond-d-shenassa\" target=\"_blank\" rel=\"noreferrer\">Dr. Edmond D. Shenassa</a>, <a href=\"https://sph.umd.edu/people/menglu-liang\" target=\"_blank\" rel=\"noreferrer\">Dr. Menglu Liang</a>, and <a href=\"https://sph.umd.edu/people/paula-strassle\" target=\"_blank\" rel=\"noreferrer\">Dr. Paula Strassle</a> on allostatic load and population health research. Also working with people from <a href=\"https://sites.google.com/umd.edu/malab/people\" target=\"_blank\" rel=\"noreferrer\">Ma Lab</a> on dementia prediction and other AI projects."
+      html: "In my methodological work, I collaborate with <a href=\"https://jpsm.umd.edu/facultyprofile/li/yan\" target=\"_blank\" rel=\"noreferrer\">Dr. Yan Li</a> and <a href=\"https://as.virginia.edu/faculty-profile/lingxiao-wang\" target=\"_blank\" rel=\"noreferrer\">Dr. Lingxiao Wang</a> on population inference. I also collaborate with <a href=\"https://sph.umd.edu/people/tianzhou-ma\" target=\"_blank\" rel=\"noreferrer\">Dr. Tianzhou Ma</a>, <a href=\"https://sph.umd.edu/people/edmond-d-shenassa\" target=\"_blank\" rel=\"noreferrer\">Dr. Edmond D. Shenassa</a>, <a href=\"https://sph.umd.edu/people/menglu-liang\" target=\"_blank\" rel=\"noreferrer\">Dr. Menglu Liang</a>, <a href=\"https://sph.umd.edu/people/paula-strassle\" target=\"_blank\" rel=\"noreferrer\">Dr. Paula Strassle</a>, and members of <a href=\"https://sites.google.com/umd.edu/malab/people\" target=\"_blank\" rel=\"noreferrer\">Ma Lab</a> on health-related applications."
     }
   ],
   timelineEnd: "Now",
@@ -319,11 +315,18 @@ window.defaultSiteContent = {
     linkLabel: "Codex",
     linkUrl: "https://chatgpt.com/codex"
   },
+  visitorMap: {
+    enabled: true,
+    title: "Visitor Map",
+    note: "A world map of where visitors come from.",
+    dataUrl: "visitor-map.json"
+  },
   analytics: {
     provider: "goatcounter",
-    site: "",
+    site: "krliu67",
     label: "Visitors",
-    dashboardUrl: "",
-    enabled: false
+    dashboardUrl: "https://krliu67.goatcounter.com/",
+    enabled: true,
+    counterLabel: "Page Views"
   }
 };

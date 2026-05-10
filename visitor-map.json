@@ -1,0 +1,11 @@
+{
+  "message": "",
+  "updatedAt": "2026-05-09",
+  "locations": [
+    { "country": "United States", "count": 12 },
+    { "country": "China", "count": 5 },
+    { "country": "Canada", "count": 3 },
+    { "country": "United Kingdom", "count": 2 },
+    { "country": "Germany", "count": 1 }
+  ]
+}
